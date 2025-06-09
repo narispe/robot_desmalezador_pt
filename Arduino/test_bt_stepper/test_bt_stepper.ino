@@ -26,7 +26,7 @@
 
 // STEPPER
 #define T_INIT 2000  //ms
-#define T_STEP 2  //us
+#define T_STEP 10  //us
 #define T_DIR 50  //ms
 #define STEP_PER_REV 200
 
