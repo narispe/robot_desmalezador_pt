@@ -1,53 +1,70 @@
 #define ENA 14
 #define IN1 27
 #define IN2 27
+#define PWM_FREQ 1000 // hz
+#define PWM_RES 8
+
 #define ENCA 35
 #define ENCB 34
-#define T_S 1000  // us
 #define NFactor 1
+#define T_S 100  // ms
+#define KP 1.0f
+#define KI 0.5f
+#define KD 0.0f
 
 volatile long EncoderCount = 0;
-float Theta, Theta_prev;
+
+long Theta, Theta_prev;
 float RPM;
 int PWM_val;
 
-float e, e_prev;
-float inte, inte_prev, deriv;
+float e, e_prev, inte, deriv;
 unsigned long dt, t, t_prev;
 
 int RPM_ref = 0;
-float kp = 1;
-float ki = 0.5;
-float kd = 10;
+
 
 void setup() {
   Serial.begin(115200);
+  ledcAttach(ENA, PWM_FREQ, PWM_RES);
+  pinMode(IN1, OUTPUT);
+  pinMode(IN2, OUTPUT);
   pinMode(ENCA, INPUT_PULLUP);
   pinMode(ENCB, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(ENCA), ISR_EncoderA1, CHANGE);
   attachInterrupt(digitalPinToInterrupt(ENCB), ISR_EncoderA2, CHANGE);
-  t_prev = micros();
+  t_prev = millis();
 }
 
 void loop() {
-  if ( (micros() - t_prev) >= T_S){
-    t = micros();
-
-    Theta = EncoderCount;
+  t = millis();
+  if ( t - t_prev >= T_S){
     dt = t - t_prev;
-    RPM = (Theta - Theta_prev) * (1000000/dt) * 60 / NFactor;
-
+    noInterrupts();
+    Theta = EncoderCount;
+    interrupts();
+    RPM = (Theta - Theta_prev) * (60000/dt) / NFactor;
     e = RPM_ref - RPM;
-    inte = inte_prev + (dt/1000000) * (e + e_prev) / 2;
-    deriv = (e - e_prev) * (1000000/dt);
-
-    PWM_val = int(kp*e + ki*inte + kd*deriv);
-
-    WriteDriverVoltage(PWM_val);
-
+    inte += (e + e_prev) * (dt/2000);
+    deriv = (e - e_prev) * (1000/dt);
+    PWM_val = int(KP*e + KI*inte + KD*deriv);
+    if (PWM_val > 255) PWM_val = 255;
+    else if (PWM_val < -255) PWM_val = -255;
+    WriteDriverV(PWM_val);
     Theta_prev = Theta;
+    e_prev = e;
     t_prev = dt;
+    Serial.print("RPM_REF: ");
+    Serial.print(RPM_ref);
+    Serial.print("  | RPM: ");
+    Serial.print(RPM);
+    Serial.print("  | PWM: ");
+    Serial.println(PWM_val);
   }
+  noInterrupts();
+  Serial.println(EncoderCount);
+  interrupts();
+  delay(100);
 
 }
 
@@ -80,16 +97,17 @@ void ISR_EncoderA1(){
     else
       EncoderCount--; 
 }
-void WriteDriverVoltage(int PWM_val){
-    if ( PWM_val > 0 ){
-        digitalWrite(IN1, HIGH);
-        digitalWrite(IN2, LOW);
-    } else if ( PWM_val < 0 ){
-        digitalWrite(IN1, LOW);
-        digitalWrite(IN2, HIGH);
-    } else {
-        digitalWrite(IN1, LOW);
-        digitalWrite(IN2, LOW);
-    }
-    analogWrite(ENA, min(abs(PWM_val), 250));
+void WriteDriverV(int PWM_val){
+  int duty = min( abs(PWM_val), 250);
+  if ( PWM_val > 0 ){
+      digitalWrite(IN1, HIGH);
+      digitalWrite(IN2, LOW);
+  } else if ( PWM_val < 0 ){
+      digitalWrite(IN1, LOW);
+      digitalWrite(IN2, HIGH);
+  } else {
+      digitalWrite(IN1, LOW);
+      digitalWrite(IN2, LOW);
+  }
+  ledcWrite(ENA, duty);
 }
