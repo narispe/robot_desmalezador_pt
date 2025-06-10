@@ -26,7 +26,7 @@
 
 // STEPPER
 #define T_INIT 2000  //ms
-#define T_STEP 10  //us
+#define T_STEP 1000  //us
 #define T_DIR 50  //ms
 #define STEP_PER_REV 200
 
@@ -35,7 +35,7 @@ float STATE[3];
 
 void setup() {
   Serial.begin(115200);
-  // Ps3.attach(notify);
+  Ps3.attach(notify);
   Ps3.begin(MAC);
   pinMode(STEP_X, OUTPUT);
   pinMode(DIR_X, OUTPUT);
@@ -53,48 +53,9 @@ void setup() {
 
 
 void loop() {
-  // Change dir and move 1 step only when pressing
-  if ( Ps3.event.button_down.circle ){
-    change_dir(DIR_X, MINUS_X);
-    step_pulse(STEP_X);
-  }
-  else if ( Ps3.event.button_down.square ){
-    change_dir(DIR_X, PLUS_X);
-    step_pulse(STEP_X);
-  }
-  else if ( Ps3.event.button_down.cross ){
-    change_dir(DIR_Y, MINUS_Y);
-    step_pulse(STEP_Y);
-  }
-  else if ( Ps3.event.button_down.triangle ){
-    change_dir(DIR_Y, PLUS_Y);
-    step_pulse(STEP_Y);
-  }
-  else if ( Ps3.event.button_down.l1 ){
-    change_dir(DIR_Z, MINUS_Z);
-    step_pulse(STEP_Z);
-  }
-  else if ( Ps3.event.button_down.r1 ){
-    change_dir(DIR_Z, PLUS_Z);
-    step_pulse(STEP_Z);
-  }
-
-  // Change dir only when pressing opposite
-  else if ( Ps3.event.button_down.left )
-    change_dir(DIR_X, MINUS_X);
-  else if ( Ps3.event.button_down.right )
-    change_dir(DIR_X, PLUS_X);
-  else if ( Ps3.event.button_down.down )
-    change_dir(DIR_Y, MINUS_Y);
-  else if ( Ps3.event.button_down.up )
-    change_dir(DIR_Y, PLUS_Y);
-  else if ( Ps3.event.button_down.l2 )
-    change_dir(DIR_Z, MINUS_Z);
-  else if ( Ps3.event.button_down.r2 )
-    change_dir(DIR_Z, PLUS_Z);
 
   // Rotate while pressing
-  else if ( Ps3.data.button.left )
+  if ( Ps3.data.button.left )
     step_pulse(STEP_X);
   else if ( Ps3.data.button.right )
     step_pulse(STEP_X);
@@ -167,28 +128,50 @@ void change_dir(int dir_pin, bool dir_val) {
 
 
 void notify(){
+
+  // Change dir only when pressing opposite
   if ( Ps3.event.button_down.up ){
-    Serial.println("Started pressing the up button");
     change_dir(DIR_Y, PLUS_Y);
   }
-  if ( Ps3.event.button_down.right ){
-    Serial.println("Started pressing the right button");
+  else if ( Ps3.event.button_down.right ){
     change_dir(DIR_X, PLUS_X);
   }
-  if ( Ps3.event.button_down.down ){
-    Serial.println("Started pressing the down button");
+  else if ( Ps3.event.button_down.down ){
     change_dir(DIR_Y, MINUS_Y);
   }
-  if ( Ps3.event.button_down.left ){
-    Serial.println("Started pressing the left button");
+  else if ( Ps3.event.button_down.left ){
     change_dir(DIR_X, MINUS_X);
   } 
-  if ( Ps3.event.button_down.l1 ){
-    Serial.println("Started pressing the left shoulder button");
+  else if ( Ps3.event.button_down.l1 ){
     change_dir(DIR_Z, MINUS_Z);
   }
-  if ( Ps3.event.button_down.r1 ){
-    Serial.println("Started pressing the right shoulder button");
+  else if ( Ps3.event.button_down.r1 ){
     change_dir(DIR_Z, PLUS_Z);
+  }
+
+  // Change dir and move 1 step only when pressing
+  else if ( Ps3.event.button_down.circle ){
+    change_dir(DIR_X, MINUS_X);
+    step_pulse(STEP_X);
+  }
+  else if ( Ps3.event.button_down.square ){
+    change_dir(DIR_X, PLUS_X);
+    step_pulse(STEP_X);
+  }
+  else if ( Ps3.event.button_down.cross ){
+    change_dir(DIR_Y, MINUS_Y);
+    step_pulse(STEP_Y);
+  }
+  else if ( Ps3.event.button_down.triangle ){
+    change_dir(DIR_Y, PLUS_Y);
+    step_pulse(STEP_Y);
+  }
+  else if ( Ps3.event.button_down.l1 ){
+    change_dir(DIR_Z, MINUS_Z);
+    step_pulse(STEP_Z);
+  }
+  else if ( Ps3.event.button_down.r1 ){
+    change_dir(DIR_Z, PLUS_Z);
+    step_pulse(STEP_Z);
   }
 }
