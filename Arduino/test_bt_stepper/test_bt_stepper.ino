@@ -27,7 +27,7 @@
 // STEPPER
 #define T_INIT 2000  //ms
 #define T_STEP 1000  //us
-#define T_DIR 50  //ms
+#define T_DIR 200  //ms
 #define STEP_PER_REV 200
 
 
@@ -142,10 +142,10 @@ void notify(){
   else if ( Ps3.event.button_down.left ){
     change_dir(DIR_X, MINUS_X);
   } 
-  else if ( Ps3.event.button_down.l1 ){
+  else if ( Ps3.event.button_down.l2 ){
     change_dir(DIR_Z, MINUS_Z);
   }
-  else if ( Ps3.event.button_down.r1 ){
+  else if ( Ps3.event.button_down.r2 ){
     change_dir(DIR_Z, PLUS_Z);
   }
 

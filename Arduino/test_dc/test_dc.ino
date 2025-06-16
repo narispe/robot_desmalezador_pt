@@ -1,15 +1,16 @@
 #define ENA 14
 #define IN1 27
-#define IN2 27
+#define IN2 26
+#define V3 12
 #define PWM_FREQ 1000 // hz
 #define PWM_RES 8
 
 #define ENCA 35
 #define ENCB 34
-#define NFactor 1
-#define T_S 100  // ms
-#define KP 1.0f
-#define KI 0.5f
+#define NFactor 400.0f
+#define T_S 50  // ms
+#define KP 0.9f
+#define KI 0.4f
 #define KD 0.0f
 
 volatile long EncoderCount = 0;
@@ -19,9 +20,11 @@ float RPM;
 int PWM_val;
 
 float e, e_prev, inte, deriv;
-unsigned long dt, t, t_prev;
+unsigned long t, t_prev;
+float dt;
 
-int RPM_ref = 0;
+int RPM_ref;
+
 
 
 void setup() {
@@ -29,15 +32,26 @@ void setup() {
   ledcAttach(ENA, PWM_FREQ, PWM_RES);
   pinMode(IN1, OUTPUT);
   pinMode(IN2, OUTPUT);
+  pinMode(V3, OUTPUT);
   pinMode(ENCA, INPUT_PULLUP);
   pinMode(ENCB, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(ENCA), ISR_EncoderA1, CHANGE);
   attachInterrupt(digitalPinToInterrupt(ENCB), ISR_EncoderA2, CHANGE);
+  digitalWrite(V3, HIGH);
   t_prev = millis();
+  RPM_ref = -400;
 }
+unsigned long t_last_ref_update = 0;  // global
+const unsigned long REF_UPDATE_INTERVAL = 5000; // 10 s
 
 void loop() {
-  t = millis();
+    t = millis();
+
+  // Aumenta RPM_ref cada 10 segundos
+  if (t - t_last_ref_update >= REF_UPDATE_INTERVAL) {
+    RPM_ref += 50;
+    t_last_ref_update = t;
+  }
   if ( t - t_prev >= T_S){
     dt = t - t_prev;
     noInterrupts();
@@ -50,21 +64,23 @@ void loop() {
     PWM_val = int(KP*e + KI*inte + KD*deriv);
     if (PWM_val > 255) PWM_val = 255;
     else if (PWM_val < -255) PWM_val = -255;
-    WriteDriverV(PWM_val);
+
+    WriteDriver(PWM_val);
+
     Theta_prev = Theta;
     e_prev = e;
-    t_prev = dt;
-    Serial.print("RPM_REF: ");
+    t_prev = t;
+    Serial.print("Theta:");
+    Serial.print(Theta);
+    Serial.print(",RPM_REF:");
     Serial.print(RPM_ref);
-    Serial.print("  | RPM: ");
+    Serial.print(",RPM:");
     Serial.print(RPM);
-    Serial.print("  | PWM: ");
+    Serial.print(",PWM:");
     Serial.println(PWM_val);
   }
-  noInterrupts();
-  Serial.println(EncoderCount);
-  interrupts();
-  delay(100);
+  // WriteDriver(100);
+
 
 }
 
@@ -97,14 +113,14 @@ void ISR_EncoderA1(){
     else
       EncoderCount--; 
 }
-void WriteDriverV(int PWM_val){
-  int duty = min( abs(PWM_val), 250);
+void WriteDriver(int PWM_val){
+  int duty = min( abs(PWM_val), 255);
   if ( PWM_val > 0 ){
-      digitalWrite(IN1, HIGH);
-      digitalWrite(IN2, LOW);
-  } else if ( PWM_val < 0 ){
       digitalWrite(IN1, LOW);
       digitalWrite(IN2, HIGH);
+  } else if ( PWM_val < 0 ){
+      digitalWrite(IN1, HIGH);
+      digitalWrite(IN2, LOW);
   } else {
       digitalWrite(IN1, LOW);
       digitalWrite(IN2, LOW);
