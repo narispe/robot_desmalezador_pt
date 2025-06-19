@@ -1,16 +1,22 @@
-#define STEP_X 23
-#define DIR_X 22
-#define STEP_Y 19
-#define DIR_Y 18
-#define STEP_Z 17
-#define DIR_Z 16
-
-#define PLUS_X 0
-#define MINUS_X 1
+// STEPPER X
+#define STEP_X 19
+#define DIR_X 18
+#define PLUS_X 1
+#define MINUS_X 0
+#define X_PER_STEP 1.8  //°
+// STEPPER Y
+#define STEP_Y 5
+#define DIR_Y 17
 #define PLUS_Y 0
 #define MINUS_Y 1
-#define PLUS_Z 0
-#define MINUS_Z 1
+#define Y_PER_STEP 0.2826 //mm
+// STEPPER Z
+#define STEP_Z 16
+#define DIR_Z 14
+#define PLUS_Z 1
+#define MINUS_Z 0
+#define Z_PER_STEP 0.015 //mm
+
 
 #define T_STEP_X 10
 #define T_DIR_X 1000

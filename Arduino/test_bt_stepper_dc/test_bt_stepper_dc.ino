@@ -7,20 +7,20 @@
 // BT
 #define MAC "90:34:fc:0f:69:75"
 // STEPPER X
-#define STEP_X 23
-#define DIR_X 22
+#define STEP_X 19
+#define DIR_X 18
 #define PLUS_X 1
 #define MINUS_X 0
 #define X_PER_STEP 1.8  //°
 // STEPPER Y
-#define STEP_Y 19
-#define DIR_Y 18
+#define STEP_Y 5
+#define DIR_Y 17
 #define PLUS_Y 0
 #define MINUS_Y 1
 #define Y_PER_STEP 0.2826 //mm
 // STEPPER Z
-#define STEP_Z 17
-#define DIR_Z 16
+#define STEP_Z 16
+#define DIR_Z 14
 #define PLUS_Z 1
 #define MINUS_Z 0
 #define Z_PER_STEP 0.015 //mm
@@ -36,7 +36,6 @@
 #define PWM_FREQ 1000 // hz
 #define PWM_RES 8
 // ENCODER
-#define V3 12
 #define ENCA 35
 #define ENCB 34
 #define NFactor 400.0f
@@ -77,8 +76,6 @@ void setup() {
   pinMode(IN1, OUTPUT);
   pinMode(IN2, OUTPUT);
   // encoder
-  pinMode(V3, OUTPUT);
-  digitalWrite(V3, HIGH);
   pinMode(ENCA, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(ENCA), ISR_Encoder1, CHANGE);
   pinMode(ENCB, INPUT_PULLUP);

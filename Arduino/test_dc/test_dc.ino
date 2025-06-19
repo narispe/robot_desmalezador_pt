@@ -1,7 +1,6 @@
 #define ENA 14
 #define IN1 27
 #define IN2 26
-#define V3 12
 #define PWM_FREQ 1000 // hz
 #define PWM_RES 8
 
@@ -32,12 +31,10 @@ void setup() {
   ledcAttach(ENA, PWM_FREQ, PWM_RES);
   pinMode(IN1, OUTPUT);
   pinMode(IN2, OUTPUT);
-  pinMode(V3, OUTPUT);
   pinMode(ENCA, INPUT_PULLUP);
   pinMode(ENCB, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(ENCA), ISR_EncoderA1, CHANGE);
   attachInterrupt(digitalPinToInterrupt(ENCB), ISR_EncoderA2, CHANGE);
-  digitalWrite(V3, HIGH);
   t_prev = millis();
   RPM_ref = -400;
 }

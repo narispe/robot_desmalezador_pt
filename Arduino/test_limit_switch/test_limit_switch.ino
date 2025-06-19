@@ -11,20 +11,20 @@
 #define LS_Y 33
 #define LS_Z 25
 // STEPPER X
-#define STEP_X 23
-#define DIR_X 22
+#define STEP_X 19
+#define DIR_X 18
 #define PLUS_X 1
 #define MINUS_X 0
 #define X_PER_STEP 1.8  //°
 // STEPPER Y
-#define STEP_Y 19
-#define DIR_Y 18
+#define STEP_Y 5
+#define DIR_Y 17
 #define PLUS_Y 0
 #define MINUS_Y 1
 #define Y_PER_STEP 0.2826 //mm
 // STEPPER Z
-#define STEP_Z 17
-#define DIR_Z 16
+#define STEP_Z 16
+#define DIR_Z 14
 #define PLUS_Z 1
 #define MINUS_Z 0
 #define Z_PER_STEP 0.015 //mm
@@ -33,35 +33,6 @@
 #define T_STEP 1000  //us
 #define T_DIR 200  //ms
 #define STEP_PER_REV 200
-// PUENTE H
-#define ENA 14
-#define IN1 27
-#define IN2 26
-#define PWM_FREQ 1000 // hz
-#define PWM_RES 8
-// ENCODER
-#define V3 12
-#define ENCA 35
-#define ENCB 34
-#define NFactor 400.0f
-// PID
-#define T_S 50  // ms
-#define KP 0.9f
-#define KI 0.4f
-#define KD 0.0f
-
-
-//---------VARIABLES-----------
-volatile long encoder_count;
-long theta, theta_prev;
-float rpm;
-float e, e_prev, inte, deriv;
-unsigned long t, t_prev;
-float dt;
-int pwm_val;
-int rpm_values[3] = {0, 200, 400};
-int rpm_val_index;
-int rpm_ref = rpm_values[0];
 float STATE[3];
 
 
@@ -76,17 +47,6 @@ void setup() {
   digitalWrite(DIR_X, PLUS_X);
   digitalWrite(DIR_Y, PLUS_Y);
   digitalWrite(DIR_Z, PLUS_Z);
-  // puente h
-  ledcAttach(ENA, PWM_FREQ, PWM_RES);
-  pinMode(IN1, OUTPUT);
-  pinMode(IN2, OUTPUT);
-  // encoder
-  pinMode(V3, OUTPUT);
-  digitalWrite(V3, HIGH);
-  pinMode(ENCA, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(ENCA), ISR_Encoder1, CHANGE);
-  pinMode(ENCB, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(ENCB), ISR_Encoder2, CHANGE);
   // limit switch
   pinMode(LS_X, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(LS_X), ISR_LimitSwitchX, CHANGE);
@@ -97,7 +57,6 @@ void setup() {
   // bt
   Ps3.attach(notify);
   Ps3.begin(MAC);
-  t_prev = millis();
 }
 
 
@@ -171,38 +130,6 @@ void notify(){
     step_pulse(STEP_Z);
   }
 
-  else if (Ps3.event.button_down.start) {
-    rpm_val_index = (rpm_val_index + 1) % 3;
-    rpm_ref = rpm_values[rpm_val_index];
-    inte = 0;
-  }
-  else if (Ps3.event.button_down.select) {
-    rpm_val_index = 0;
-    rpm_ref = rpm_values[0];
-    inte = 0;
-  }
-}
-// ENCODER
-void ISR_Encoder1(){
-  bool PinA = digitalRead(ENCA);
-  bool PinB = digitalRead(ENCB);
-  encoder_count += (PinA == PinB) ? 1 : -1; 
-}
-void ISR_Encoder2(){
-  bool PinA = digitalRead(ENCA);
-  bool PinB = digitalRead(ENCB);
-  encoder_count += (PinA == PinB) ? -1 : 1;
-}
-void WriteDriver(int PWM_val){
-  int duty = min( abs(PWM_val), 255);
-  if ( duty > 0) {
-    digitalWrite(IN1, PWM_val < 0);
-    digitalWrite(IN1, PWM_val > 0);
-  } else {
-    digitalWrite(IN1, LOW);
-    digitalWrite(IN2, LOW);
-  }
-  ledcWrite(ENA, duty);
 }
 // LIMIT SWITCH
 void ISR_LimitSwitchX(){
