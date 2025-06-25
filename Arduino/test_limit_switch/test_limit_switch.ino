@@ -34,6 +34,13 @@
 #define T_DIR 200  //ms
 #define STEP_PER_REV 200
 float STATE[3];
+// Limit Switch variables 
+bool limit_x_plus_active = false;
+bool limit_x_minus_active = false;
+bool limit_y_plus_active = false;
+bool limit_y_minus_active = false;
+bool limit_z_plus_active = false;
+bool limit_z_minus_active = false;
 
 
 //---------SETUP-----------
@@ -63,7 +70,18 @@ void setup() {
 //---------LOOP-----------
 void loop() {
   // Rotate while pressing
-  delay(1000);
+   if ( Ps3.data.button.left )
+    step_pulse(STEP_X);
+  else if ( Ps3.data.button.right )
+    step_pulse(STEP_X);
+  else if ( Ps3.data.button.down )
+    step_pulse(STEP_Y);
+  else if ( Ps3.data.button.up )
+    step_pulse(STEP_Y);
+  else if ( Ps3.data.button.l2 )
+    step_pulse(STEP_Z);
+  else if ( Ps3.data.button.r2 )
+    step_pulse(STEP_Z);
 
 }
 
@@ -71,6 +89,12 @@ void loop() {
 //---------FUNCTIONS-----------
 // STEPPER
 void step_pulse(int step_pin){
+  // Checkeo si me puedo mover 
+  if (!check_limit(step_pin)) {
+    Serial.println("Movimiento bloqueado por limit switch");
+    return;
+  }
+
   if ( step_pin == STEP_X )
     STATE[0] += (DIR_X == PLUS_X) ? X_PER_STEP : -X_PER_STEP;
   else if ( step_pin == STEP_Y )
@@ -133,23 +157,91 @@ void notify(){
 }
 // LIMIT SWITCH
 void ISR_LimitSwitchX(){
+  bool dir = digitalRead(DIR_X);
   if (digitalRead(LS_X) == LOW){
-    Serial.println("LIMIT SWITCH X ACTIVADO");
+    if (dir == PLUS_X) {
+      limit_x_plus_active = true;
+      Serial.println("LIMIT SWITCH X+ ACTIVADO");
+    } else {
+      limit_x_minus_active = true;
+      Serial.println("LIMIT SWITCH X- ACTIVADO");
+    }
   } else {
+    limit_x_plus_active = false;
+    limit_x_minus_active = false;
     Serial.println("LIMIT SWITCH X DESACTIVADO");
   }
 }
+
 void ISR_LimitSwitchY(){
+  bool dir = digitalRead(DIR_Y);
   if (digitalRead(LS_Y) == LOW){
-    Serial.println("LIMIT SWITCH Y ACTIVADO");
+    if (dir == PLUS_Y) {
+      limit_y_plus_active = true;
+      Serial.println("LIMIT SWITCH Y+ ACTIVADO");
+    } else {
+      limit_y_minus_active = true;
+      Serial.println("LIMIT SWITCH Y- ACTIVADO");
+    }
   } else {
+    limit_y_plus_active = false;
+    limit_y_minus_active = false;
     Serial.println("LIMIT SWITCH Y DESACTIVADO");
   }
 }
+
+
 void ISR_LimitSwitchZ(){
+  bool dir = digitalRead(DIR_Z);
   if (digitalRead(LS_Z) == LOW){
-    Serial.println("LIMIT SWITCH Z ACTIVADO");
+    if (dir == PLUS_Z) {
+      limit_z_plus_active = true;
+      Serial.println("LIMIT SWITCH Z+ ACTIVADO");
+    } else {
+      limit_z_minus_active = true;
+      Serial.println("LIMIT SWITCH Z- ACTIVADO");
+    }
   } else {
-    Serial.println("LIMIT SWITCH Y DESACTIVADO");
+    limit_z_plus_active = false;
+    limit_z_minus_active = false;
+    Serial.println("LIMIT SWITCH Z DESACTIVADO");
   }
+}
+
+
+bool check_limit(int step_pin) {
+  if (step_pin == STEP_X) {
+    if ( (digitalRead(DIR_X) == PLUS_X) && limit_x_plus_active ) {
+      Serial.println("Bloqueado: X en dirección +");
+      return false;
+    }
+    if ( (digitalRead(DIR_X) == MINUS_X) && limit_x_minus_active ) {
+      Serial.println("Bloqueado: X en dirección -");
+      return false;
+    }
+  }
+
+  else if (step_pin == STEP_Y) {
+    if ( (digitalRead(DIR_Y) == PLUS_Y) && limit_y_plus_active ) {
+      Serial.println("Bloqueado: Y en dirección +");
+      return false;
+    }
+    if ( (digitalRead(DIR_Y) == MINUS_Y) && limit_y_minus_active ) {
+      Serial.println("Bloqueado: Y en dirección -");
+      return false;
+    }
+  }
+
+  else if (step_pin == STEP_Z) {
+    if ( (digitalRead(DIR_Z) == PLUS_Z) && limit_z_plus_active ) {
+      Serial.println("Bloqueado: Z en dirección +");
+      return false;
+    }
+    if ( (digitalRead(DIR_Z) == MINUS_Z) && limit_z_minus_active ) {
+      Serial.println("Bloqueado: Z en dirección -");
+      return false;
+    }
+  }
+  
+  return true;
 }
