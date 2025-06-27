@@ -56,11 +56,8 @@ void setup() {
   digitalWrite(DIR_Z, PLUS_Z);
   // limit switch
   pinMode(LS_X, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(LS_X), ISR_LimitSwitchX, CHANGE);
   pinMode(LS_Y, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(LS_Y), ISR_LimitSwitchY, CHANGE);
   pinMode(LS_Z, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(LS_Z), ISR_LimitSwitchZ, CHANGE);
   // bt
   Ps3.attach(notify);
   Ps3.begin(MAC);
@@ -69,19 +66,24 @@ void setup() {
 
 //---------LOOP-----------
 void loop() {
-  // Rotate while pressing
-  //  if ( Ps3.data.button.left )
-  //   step_pulse(STEP_X);
-  // else if ( Ps3.data.button.right )
-  //   step_pulse(STEP_X);
-  // else if ( Ps3.data.button.down )
-  //   step_pulse(STEP_Y);
-  // else if ( Ps3.data.button.up )
-  //   step_pulse(STEP_Y);
-  // else if ( Ps3.data.button.l2 )
-  //   step_pulse(STEP_Z);
-  // else if ( Ps3.data.button.r2 )
-  //   step_pulse(STEP_Z);
+  // Rotate while 
+  
+  check_switchs();
+
+
+   if ( Ps3.data.button.left )
+    step_pulse(STEP_X);
+  else if ( Ps3.data.button.right )
+    step_pulse(STEP_X);
+  else if ( Ps3.data.button.down )
+    step_pulse(STEP_Y);
+  else if ( Ps3.data.button.up )
+    step_pulse(STEP_Y);
+  else if ( Ps3.data.button.l2 )
+    step_pulse(STEP_Z);
+  else if ( Ps3.data.button.r2 )
+    step_pulse(STEP_Z);
+
   // change_dir(DIR_X, PLUS_X);
   // for (int i; i<200; i++)
   //   step_pulse(DIR_X);
@@ -107,11 +109,10 @@ void loop() {
 // STEPPER
 void step_pulse(int step_DIR){
   // Checkeo si me puedo mover 
-  if (!check_limit(step_DIR)) {
+  if ( !check_limit(step_DIR) ){
     Serial.println("Movimiento bloqueado por limit switch");
     return;
   }
-
   if ( step_DIR == STEP_X )
     STATE[0] += (DIR_X == PLUS_X) ? X_PER_STEP : -X_PER_STEP;
   else if ( step_DIR == STEP_Y )
@@ -173,10 +174,9 @@ void notify(){
 
 }
 // LIMIT SWITCH
-void ISR_LimitSwitchX(){
-  bool dir = digitalRead(DIR_X);
-  if (digitalRead(LS_X) == LOW){
-    if (dir == PLUS_X) {
+void check_switchs(){
+  if ( digitalRead(LS_X) == LOW ){
+    if ( digitalRead(DIR_X) == PLUS_X ){
       limit_x_plus_active = true;
       Serial.println("LIMIT SWITCH X+ ACTIVADO");
     } else {
@@ -188,12 +188,8 @@ void ISR_LimitSwitchX(){
     limit_x_minus_active = false;
     Serial.println("LIMIT SWITCH X DESACTIVADO");
   }
-}
-
-void ISR_LimitSwitchY(){
-  bool dir = digitalRead(DIR_Y);
-  if (digitalRead(LS_Y) == LOW){
-    if (dir == PLUS_Y) {
+  if ( digitalRead(LS_Y) == LOW ){
+    if ( digitalRead(DIR_Y) == PLUS_Y ) {
       limit_y_plus_active = true;
       Serial.println("LIMIT SWITCH Y+ ACTIVADO");
     } else {
@@ -205,13 +201,8 @@ void ISR_LimitSwitchY(){
     limit_y_minus_active = false;
     Serial.println("LIMIT SWITCH Y DESACTIVADO");
   }
-}
-
-
-void ISR_LimitSwitchZ(){
-  bool dir = digitalRead(DIR_Z);
-  if (digitalRead(LS_Z) == LOW){
-    if (dir == PLUS_Z) {
+  if ( digitalRead(LS_Z) == LOW ){
+    if ( digitalRead(DIR_Z) == PLUS_Z ){
       limit_z_plus_active = true;
       Serial.println("LIMIT SWITCH Z+ ACTIVADO");
     } else {
@@ -224,8 +215,6 @@ void ISR_LimitSwitchZ(){
     Serial.println("LIMIT SWITCH Z DESACTIVADO");
   }
 }
-
-
 bool check_limit(int step_DIR) {
   if (step_DIR == STEP_X) {
     if ( (digitalRead(DIR_X) == PLUS_X) && limit_x_plus_active ) {
@@ -236,9 +225,7 @@ bool check_limit(int step_DIR) {
       Serial.println("Bloqueado: X en dirección -");
       return false;
     }
-  }
-
-  else if (step_DIR == STEP_Y) {
+  } else if (step_DIR == STEP_Y) {
     if ( (digitalRead(DIR_Y) == PLUS_Y) && limit_y_plus_active ) {
       Serial.println("Bloqueado: Y en dirección +");
       return false;
@@ -247,9 +234,7 @@ bool check_limit(int step_DIR) {
       Serial.println("Bloqueado: Y en dirección -");
       return false;
     }
-  }
-
-  else if (step_DIR == STEP_Z) {
+  } else if (step_DIR == STEP_Z) {
     if ( (digitalRead(DIR_Z) == PLUS_Z) && limit_z_plus_active ) {
       Serial.println("Bloqueado: Z en dirección +");
       return false;
@@ -259,6 +244,5 @@ bool check_limit(int step_DIR) {
       return false;
     }
   }
-  
   return true;
 }
