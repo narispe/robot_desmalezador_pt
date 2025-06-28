@@ -8,17 +8,17 @@
 #define ENCB 34
 #define NFactor 400.0f
 #define T_S 50  // ms
-#define KP 0.9f
-#define KI 0.4f
+#define KP 1.2f
+#define KI 1.5f
 #define KD 0.0f
 
 volatile long EncoderCount = 0;
 
 long Theta, Theta_prev;
 float RPM;
-int PWM_val;
+int PWM_val, PWM_val_prev;
 
-float e, e_prev, inte, deriv;
+float e, e_prev, e_prev_prev;
 unsigned long t, t_prev;
 float dt;
 
@@ -46,7 +46,7 @@ void loop() {
 
   // Aumenta RPM_ref cada 10 segundos
   if (t - t_last_ref_update >= REF_UPDATE_INTERVAL) {
-    RPM_ref += 50;
+    RPM_ref += 100;
     t_last_ref_update = t;
   }
   if ( t - t_prev >= T_S){
@@ -56,9 +56,8 @@ void loop() {
     interrupts();
     RPM = (Theta - Theta_prev) * (60000/dt) / NFactor;
     e = RPM_ref - RPM;
-    inte += (e + e_prev) * (dt/2000);
-    deriv = (e - e_prev) * (1000/dt);
-    PWM_val = int(KP*e + KI*inte + KD*deriv);
+
+    PWM_val = int(PWM_val_prev + (KP + T_S*KI/1000 + 1000*KD/T_S) * e + (-KP-2000*KD/T_S)*e_prev + (1000*KD/T_S)*e_prev_prev);
     if (PWM_val > 255) PWM_val = 255;
     else if (PWM_val < -255) PWM_val = -255;
 
@@ -66,6 +65,8 @@ void loop() {
 
     Theta_prev = Theta;
     e_prev = e;
+    e_prev_prev = e_prev;
+    PWM_val_prev = PWM_val;
     t_prev = t;
     Serial.print("Theta:");
     Serial.print(Theta);

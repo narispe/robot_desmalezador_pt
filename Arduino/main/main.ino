@@ -7,35 +7,31 @@
 #define MAC "90:34:fc:0f:69:75"
 // CNC SHIELD
 #define EN_CNC 0
-// LIMIT SWITCH
 #define LS_X 32
 #define LS_Y 33
 #define LS_Z 25
-// STEPPER X
 #define STEP_X 19
 #define DIR_X 18
-#define PLUS_X 1
-#define MINUS_X 0
-#define X_PER_STEP 0.1286  //°
-#define T_STEP_X 1000 //us
-// STEPPER Y
 #define STEP_Y 5
 #define DIR_Y 17
+#define STEP_Z 16
+#define DIR_Z 4
+// STEPPER DIRS
+#define PLUS_X 1
+#define MINUS_X 0
 #define PLUS_Y 0
 #define MINUS_Y 1
-#define Y_PER_STEP 0.2826 //mm
-#define T_STEP_Y 1000 //us
-// STEPPER Z
-#define STEP_Z 16
-#define DIR_Z 14
 #define PLUS_Z 1
 #define MINUS_Z 0
-#define Z_PER_STEP 0.015 //mm
+// STEPERS PITCH
+#define X_PITCH 0.1286  //°
+#define Y_PITCH 0.2826 //mm
+#define Z_PITCH 0.015 //mm
+// STEPERS VEL (T = RPM * 3e5)
+#define T_STEP_X 3000 //us
+#define T_STEP_Y 3000 //us
 #define T_STEP_Z 1000 //us
-// STEPPER
-#define T_STEP 1000 //us
-#define T_DIR 200   //ms
-#define STEP_PER_REV 200
+#define T_DIR 250   //ms
 // PUENTE H
 #define ENA 14
 #define IN1 27
@@ -48,8 +44,8 @@
 #define NFactor 400.0f
 // PID
 #define T_S 50  // ms
-#define KP 0.9f
-#define KI 0.4f
+#define KP 1.2f
+#define KI 1.5f
 #define KD 0.0f
 
 //---------VARIABLES-----------
@@ -60,13 +56,14 @@ bool limit_y_plus_active = false;
 bool limit_y_minus_active = false;
 bool limit_z_plus_active = false;
 bool limit_z_minus_active = false;
+// PID CONTROL
 volatile long encoder_count;
 long theta, theta_prev;
 float rpm;
-float e, e_prev, inte, deriv;
+float e, e_prev, e_prev_prev;
 unsigned long t, t_prev;
 float dt;
-int pwm_val;
+int pwm_val, pwm_val_prev;
 int rpm_values[3] = {0, 200, 400};
 int rpm_val_index;
 int rpm_ref = rpm_values[0];
@@ -83,7 +80,7 @@ void setup() {
 
 //---------LOOP-----------
 void loop() {
-  check_switches();
+  check_switchs();
 
   control_Ps3();
   
@@ -95,13 +92,16 @@ void loop() {
     dt = t - t_prev;
     rpm = (theta - theta_prev) * (60000/dt) / NFactor;
     e = rpm_ref - rpm;
-    inte += (e + e_prev) * (dt/2000);
-    deriv = (e - e_prev) * (1000/dt);
-    pwm_val = int(KP*e + KI*inte + KD*deriv);
+    pwm_val = int(pwm_val_prev
+                  + (KP + T_S*KI/1000 + 1000*KD/T_S) * e
+                  + (-KP-2000*KD/T_S) * e_prev
+                  + (1000*KD/T_S) * e_prev_prev);
     pwm_val = constrain(pwm_val, -255, 255);
     WriteDriver(pwm_val);
     theta_prev = theta;
     e_prev = e;
+    e_prev_prev = e_prev;
+    pwm_val_prev = pwm_val;
     t_prev = t;
   }
 }
@@ -114,11 +114,11 @@ void step_pulse(int step_pin, int t_pulse){
     return;
   switch ( step_pin ){
     case STEP_X:
-      STATE[0] += (digitalRead(DIR_X) == PLUS_X) ? X_PER_STEP : -X_PER_STEP; break;
+      STATE[0] += (digitalRead(DIR_X) == PLUS_X) ? X_PITCH : -X_PITCH; break;
     case STEP_Y:
-      STATE[1] += (digitalRead(DIR_Y) == PLUS_Y) ? Y_PER_STEP : -Y_PER_STEP; break;
+      STATE[1] += (digitalRead(DIR_Y) == PLUS_Y) ? Y_PITCH : -Y_PITCH; break;
     case STEP_Z:
-      STATE[2] += (digitalRead(DIR_Z) == PLUS_Z) ? Z_PER_STEP : -Z_PER_STEP; break;
+      STATE[2] += (digitalRead(DIR_Z) == PLUS_Z) ? Z_PITCH : -Z_PITCH; break;
   }
   digitalWrite(step_pin, HIGH);
   delayMicroseconds(t_pulse/2);
@@ -127,6 +127,7 @@ void step_pulse(int step_pin, int t_pulse){
 }
 void change_dir(int dir_pin, bool dir_val){
   if ( digitalRead(dir_pin) != dir_val ){
+    delay(T_DIR/2);
     switch ( dir_pin ){
       case DIR_X:
         digitalWrite(DIR_X, dir_val); break;
@@ -135,7 +136,7 @@ void change_dir(int dir_pin, bool dir_val){
       case DIR_Z:
         digitalWrite(DIR_Z, dir_val); break;
     }
-    delay(T_DIR);
+    delay(T_DIR/2);
   }
 }
 
@@ -233,22 +234,20 @@ void ISR_Ps3(){
   else if ( Ps3.event.button_down.r2 || Ps3.event.button_down.r1 )
     change_dir(DIR_Z, PLUS_Z);
   // Change dir and move 1 step only when pressing
-  if ( Ps3.event.button_down.circle || Ps3.event.button_down.square )
-    step_pulse(STEP_X, T_STEP_X);
-  else if ( Ps3.event.button_down.triangle || Ps3.event.button_down.cross )
-    step_pulse(STEP_Y, T_STEP_Y);
-  else if ( Ps3.event.button_down.l1 || Ps3.event.button_down.r1 )
-    step_pulse(STEP_Z, T_STEP_Z);
+  // if ( Ps3.event.button_down.circle || Ps3.event.button_down.square )
+  //   step_pulse(STEP_X, T_STEP_X);
+  // else if ( Ps3.event.button_down.triangle || Ps3.event.button_down.cross )
+  //   step_pulse(STEP_Y, T_STEP_Y);
+  // else if ( Ps3.event.button_down.l1 || Ps3.event.button_down.r1 )
+  //   step_pulse(STEP_Z, T_STEP_Z);
   // pid control of rpm
-  if ( Ps3.event.button_down.start ) {
+  else if ( Ps3.event.button_down.start ) {
     rpm_val_index = (rpm_val_index + 1) % 3;
     rpm_ref = rpm_values[rpm_val_index];
-    inte = 0;
   }
   else if ( Ps3.event.button_down.select ) {
     rpm_val_index = 0;
     rpm_ref = rpm_values[rpm_val_index];
-    inte = 0;
   }
   // on/off cnc shield
   if ( Ps3.event.button_down.ps )
@@ -272,12 +271,12 @@ void ISR_Encoder2(){
 }
 void WriteDriver(int PWM_val){
   int duty = min( abs(PWM_val), 255);
-  if ( duty > 0) {
-    digitalWrite(IN1, PWM_val < 0);
-    digitalWrite(IN2, PWM_val > 0);
+  if ( duty > 0 ){
+      digitalWrite(IN1, PWM_VAL < 0);
+      digitalWrite(IN2, PWM_VAL > 0);
   } else {
-    digitalWrite(IN1, LOW);
-    digitalWrite(IN2, LOW);
+      digitalWrite(IN1, LOW);
+      digitalWrite(IN2, LOW);
   }
   ledcWrite(ENA, duty);
 }
