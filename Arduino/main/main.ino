@@ -75,7 +75,7 @@ float e, e_prev, e_prev_prev;
 unsigned long t, t_prev;
 float dt;
 int pwm_val, pwm_val_prev;
-int rpm_values[3] = {0, 400, -400};
+int rpm_values[3] = {0, 300, -300};
 int rpm_val_index;
 int rpm_ref = rpm_values[0];
 // Stepers
@@ -85,10 +85,10 @@ unsigned long t_counter_calib;
 
 //---------SETUP-----------
 void setup() {
-  init_bt();
+  // init_bt();
   init_cnc_shield();
   init_dc_motor();
-  init_imu();
+  // init_imu();
   init_ps3();
   t_prev = millis();
 }
@@ -408,7 +408,7 @@ void write_hbridge(int PWM_val){
   }
   ledcWrite(ENA, duty);
   SerialBT.print("H-BRIDGE PWM WRITED: ");
-  SerialBT.println(PWM_VAL);
+  SerialBT.println(PWM_val);
 }
 void update_rpm_ref(){
   rpm_val_index = (rpm_val_index + 1) % 3;
