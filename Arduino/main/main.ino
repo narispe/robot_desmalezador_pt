@@ -34,10 +34,10 @@
 #define Y_PITCH 0.2826 //mm
 #define Z_PITCH 0.015 //mm
 // STEPERS VEL (T = RPM * 3e5)
-#define T_STEP_X 5000 //us
-#define T_STEP_Y 3000 //us
+#define T_STEP_X 1500 //us
+#define T_STEP_Y 2000 //us
 #define T_STEP_Z 1000 //us
-#define T_DIR 500   //ms
+#define T_DIR 100   //ms
 #define T_CAL_DELAY 500 // ms
 // PUENTE H
 #define ENA 14
@@ -52,7 +52,7 @@
 // PID
 #define TS 50  // ms
 #define KP 1.2f
-#define KI 1.5f
+#define KI 1.4f
 #define KD 0.0f
 
 //---------OBJECTS-----------
@@ -75,7 +75,7 @@ float e, e_prev, e_prev_prev;
 unsigned long t, t_prev;
 float dt;
 int pwm_val, pwm_val_prev;
-int rpm_values[3] = {0, 300, -300};
+int rpm_values[3] = {0, 200, 400, za350, -350};
 int rpm_val_index;
 int rpm_ref = rpm_values[0];
 // Stepers
@@ -85,19 +85,19 @@ unsigned long t_counter_calib;
 
 //---------SETUP-----------
 void setup() {
-  // init_bt();
   init_cnc_shield();
   init_dc_motor();
   // init_imu();
   init_ps3();
+  init_bt();
   t_prev = millis();
 }
 
 //---------LOOP-----------
 void loop() {
   check_limit_switch();
-
-  control_ps3();
+  if ( ps3IsConnected() )
+    control_ps3();
   
   t = millis();
   if ( t - t_prev >= TS ){
@@ -322,12 +322,37 @@ void init_cnc_shield(){
 // CONTROLLER
 void control_ps3(){
   // Rotate while pressing
-  if ( Ps3.data.button.left || Ps3.data.button.right )
+  if ( Ps3.data.button.left ){
+    change_dir(DIR_X, MINUS_X);
     step_pulse(STEP_X, T_STEP_X);
-  else if ( Ps3.data.button.down || Ps3.data.button.up )
+  }
+  if ( Ps3.data.button.right ){
+    change_dir(DIR_X, PLUS_X);
+    step_pulse(STEP_X, T_STEP_X);
+  }
+  if ( Ps3.data.button.up ){
+    change_dir(DIR_Y, PLUS_Y);
     step_pulse(STEP_Y, T_STEP_Y);
-  else if ( Ps3.data.button.l2 || Ps3.data.button.r2 )
+  }
+  if ( Ps3.data.button.down ){
+    change_dir(DIR_Y, MINUS_Y);
+    step_pulse(STEP_Y, T_STEP_Y);
+  }
+  if ( Ps3.data.button.l2 ){
+    change_dir(DIR_Z, MINUS_Z);
     step_pulse(STEP_Z, T_STEP_Z);
+  }
+  if ( Ps3.data.button.r2 ){
+    change_dir(DIR_Z, PLUS_Z);
+    step_pulse(STEP_Z, T_STEP_Z);
+  }
+
+  // if ( Ps3.data.button.left || Ps3.data.button.right )
+  //   step_pulse(STEP_X, T_STEP_X);
+  // else if ( Ps3.data.button.down || Ps3.data.button.up )
+  //   step_pulse(STEP_Y, T_STEP_Y);
+  // else if ( Ps3.data.button.l2 || Ps3.data.button.r2 )
+  //   step_pulse(STEP_Z, T_STEP_Z);
 }
 void isr_ps3(){
   // Change dir only when pressing opposite
@@ -399,7 +424,7 @@ void isr_encoder2(){
 }
 void write_hbridge(int PWM_val){
   int duty = abs(PWM_val);
-  if ( duty > 0 ){
+  if ( duty > 70 ){
     digitalWrite(IN1, PWM_val > 0);
     digitalWrite(IN2, PWM_val < 0);
   } else {

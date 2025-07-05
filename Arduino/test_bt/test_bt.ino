@@ -1,4 +1,7 @@
 #include <Ps3Controller.h>
+#include "BluetoothSerial.h"
+BluetoothSerial SerialBT;
+
 
 int player = 0;
 int battery = 0;
@@ -196,12 +199,17 @@ void onConnect(){
 
 void setup()
 {
-    Serial.begin(115200);
+  
+    // Serial.begin(115200);
 
     Ps3.attach(notify);
     Ps3.attachOnConnect(onConnect);
     Ps3.begin("90:34:fc:0f:69:75");
     Serial.println("Ready.");
+
+    Serial.begin(115200);
+   SerialBT.begin("PROMEESP32"); //Bluetooth device name
+   Serial.println("The device started, now you can pair it with bluetooth!");
 }
 
 void loop()
