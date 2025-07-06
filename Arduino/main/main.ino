@@ -11,6 +11,7 @@
 // CONTROLLER
 #define MAC "90:34:fc:0f:69:75"
 #define T_VIB 500 // ms
+#define POWER_VIB 80
 // CNC SHIELD
 #define EN_CNC 0
 #define LS_X 32
@@ -34,10 +35,10 @@
 #define Y_PITCH 0.2826 //mm
 #define Z_PITCH 0.015 //mm
 // STEPERS VEL (T = RPM * 3e5)
-#define T_STEP_X 1500 //us
-#define T_STEP_Y 2000 //us
-#define T_STEP_Z 1000 //us
-#define T_DIR 100   //ms
+#define T_STEP_X 6000 //us
+#define T_STEP_Y 5000 //us
+#define T_STEP_Z 900 //us
+#define T_DIR 10   //ms
 #define T_CAL_DELAY 500 // ms
 // PUENTE H
 #define ENA 14
@@ -45,6 +46,7 @@
 #define IN2 26
 #define PWM_FREQ 1000 // hz
 #define PWM_RES 8
+#define PWM_MIN 65
 // ENCODER
 #define ENCA 35
 #define ENCB 34
@@ -54,6 +56,7 @@
 #define KP 1.2f
 #define KI 1.4f
 #define KD 0.0f
+#define N_RPM_REFS 8
 
 //---------OBJECTS-----------
 MPU9250 Mpu;
@@ -75,7 +78,7 @@ float e, e_prev, e_prev_prev;
 unsigned long t, t_prev;
 float dt;
 int pwm_val, pwm_val_prev;
-int rpm_values[3] = {0, 200, 400, za350, -350};
+int rpm_values[N_RPM_REFS] = {0, 200, 400, 200, 0, -200, -400, -200};
 int rpm_val_index;
 int rpm_ref = rpm_values[0];
 // Stepers
@@ -125,7 +128,9 @@ void loop() {
 //---------FUNCTIONS-----------
 // STEPPERS
 void step_pulse(int step_pin, int t_pulse){
-  if ( is_limit_on(step_pin) )
+  if ( is_limit_on(step_pin) ){
+    SerialBT.print("bloq");
+  }
     return;
   digitalWrite(step_pin, HIGH);
   delayMicroseconds(t_pulse/2);
@@ -207,7 +212,7 @@ void check_limit_switch(){
     SerialBT.println("LIMIT SWITCH TRIGGERED: Z-");
   }
 }
-bool is_limit_on(int step_pin) {
+bool is_limit_on(int step_pin){
   int dir_pin, dir_val, dir_plus, dir_minus;
   bool limit_plus, limit_minus;
   switch ( step_pin ){
@@ -346,37 +351,8 @@ void control_ps3(){
     change_dir(DIR_Z, PLUS_Z);
     step_pulse(STEP_Z, T_STEP_Z);
   }
-
-  // if ( Ps3.data.button.left || Ps3.data.button.right )
-  //   step_pulse(STEP_X, T_STEP_X);
-  // else if ( Ps3.data.button.down || Ps3.data.button.up )
-  //   step_pulse(STEP_Y, T_STEP_Y);
-  // else if ( Ps3.data.button.l2 || Ps3.data.button.r2 )
-  //   step_pulse(STEP_Z, T_STEP_Z);
 }
 void isr_ps3(){
-  // Change dir only when pressing opposite
-  if ( Ps3.event.button_down.up )
-    change_dir(DIR_Y, PLUS_Y);
-  else if ( Ps3.event.button_down.right )
-    change_dir(DIR_X, MINUS_X);
-  else if ( Ps3.event.button_down.down )
-    change_dir(DIR_Y, MINUS_Y);
-  else if ( Ps3.event.button_down.left )
-    change_dir(DIR_X, PLUS_X);
-  else if ( Ps3.event.button_down.l2 )
-    change_dir(DIR_Z, MINUS_Z);
-  else if ( Ps3.event.button_down.r2 )
-    change_dir(DIR_Z, PLUS_Z);
-
-  // Change dir and move 1 step only when pressing
-  // if ( Ps3.event.button_down.circle || Ps3.event.button_down.square )
-  //   step_pulse(STEP_X, T_STEP_X);
-  // else if ( Ps3.event.button_down.triangle || Ps3.event.button_down.cross )
-  //   step_pulse(STEP_Y, T_STEP_Y);
-  // else if ( Ps3.event.button_down.l1 || Ps3.event.button_down.r1 )
-  //   step_pulse(STEP_Z, T_STEP_Z);
-
   // pid control of rpm
   if ( Ps3.event.button_down.start )
     update_rpm_ref();
@@ -386,20 +362,20 @@ void isr_ps3(){
   // on/off cnc shield
   if ( Ps3.event.button_down.ps ){
     turn_power_cnc_shield();
-    t_counter_calib = 0;
+    // t_counter_calib = 0;
   }
   // calibrate if hold & release 5s
-  if ( Ps3.event.button_up.ps ){
-    if ( millis() - t_counter_calib > 5000){
-      range_x = calibrate_range(STEP_X);
-      range_y = calibrate_range(STEP_Y);
-      range_z = calibrate_range(STEP_Z);
-    }
-    t_counter_calib = 0;
-  }
+  // if ( Ps3.event.button_up.ps ){
+  //   if ( millis() - t_counter_calib > 5000){
+  //     range_x = calibrate_range(STEP_X);
+  //     range_y = calibrate_range(STEP_Y);
+  //     range_z = calibrate_range(STEP_Z);
+  //   }
+  //   t_counter_calib = 0;
+  // }
 }
 void ps3_on_connect(){
-  Ps3.setRumble(100.0, T_VIB);
+  Ps3.setRumble(POWER_VIB, T_VIB);
   delay(T_VIB);
   Ps3.setRumble(0.0);
   SerialBT.println("CONTROLLER CONNECTED");
@@ -424,7 +400,7 @@ void isr_encoder2(){
 }
 void write_hbridge(int PWM_val){
   int duty = abs(PWM_val);
-  if ( duty > 70 ){
+  if ( duty > PWM_MIN ){
     digitalWrite(IN1, PWM_val > 0);
     digitalWrite(IN2, PWM_val < 0);
   } else {
@@ -432,20 +408,14 @@ void write_hbridge(int PWM_val){
     digitalWrite(IN2, LOW);
   }
   ledcWrite(ENA, duty);
-  SerialBT.print("H-BRIDGE PWM WRITED: ");
-  SerialBT.println(PWM_val);
+  // SerialBT.print("H-BRIDGE PWM WRITED: ");
+  // SerialBT.println(PWM_val);
 }
 void update_rpm_ref(){
-  rpm_val_index = (rpm_val_index + 1) % 3;
+  rpm_val_index = (rpm_val_index + 1) % N_RPM_REFS;
   rpm_ref = rpm_values[rpm_val_index];
   SerialBT.print("DRILL RPM SETTED TO: ");
   SerialBT.println(rpm_ref);
-  // if ( rpm_ref == rpm_values[0])
-  //   write_hbridge(0);
-  // if ( rpm_ref == rpm_values[1])
-  //   write_hbridge(150);
-  // if ( rpm_ref == rpm_values[2])
-  //   write_hbridge(255);
 }
 void reset_rpm_ref(){
   rpm_val_index = 0;
