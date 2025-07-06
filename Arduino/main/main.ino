@@ -187,27 +187,27 @@ void check_limit_switch(){
   limit_y_minus_on = false;
   limit_z_plus_on = false;
   limit_z_minus_on = false;
-  if ( digitalRead(DIR_X) == PLUS_X && digitalRead(LS_X) == LOW ){
+  if ( digitalRead(DIR_X) == PLUS_X && digitalRead(LS_X) == LOW && limit_x_minus_on == false){
     limit_x_plus_on = true;
     SerialBT.println("LIMIT SWITCH TRIGGERED: X+");
   }
-  if ( digitalRead(DIR_X) == MINUS_X && digitalRead(LS_X) == LOW ){
+  if ( digitalRead(DIR_X) == MINUS_X && digitalRead(LS_X) == LOW && limit_x_plus_on == false){
     limit_x_minus_on = true;
     SerialBT.println("LIMIT SWITCH TRIGGERED: X-");
   }
-  if ( digitalRead(DIR_Y) == PLUS_Y && digitalRead(LS_Y) == LOW ){
+  if ( digitalRead(DIR_Y) == PLUS_Y && digitalRead(LS_Y) == LOW && limit_y_minus_on == false){
     limit_y_plus_on = true;
     SerialBT.println("LIMIT SWITCH TRIGGERED: Y+");
   }
-  if ( digitalRead(DIR_Y) == MINUS_Y && digitalRead(LS_Y) == LOW ){
+  if ( digitalRead(DIR_Y) == MINUS_Y && digitalRead(LS_Y) == LOW && limit_y_plus_on == false){
     limit_y_minus_on = true;
     SerialBT.println("LIMIT SWITCH TRIGGERED: Y-");
   }
-  if ( digitalRead(DIR_Z) == PLUS_Z && digitalRead(LS_Z) == LOW ){
+  if ( digitalRead(DIR_Z) == PLUS_Z && digitalRead(LS_Z) == LOW && limit_z_minus_on == false){
     limit_z_plus_on = true;
     SerialBT.println("LIMIT SWITCH TRIGGERED: Z+");
   }
-  if ( digitalRead(DIR_Z) == MINUS_Z && digitalRead(LS_Z) == LOW ){
+  if ( digitalRead(DIR_Z) == MINUS_Z && digitalRead(LS_Z) == LOW && limit_z_plus_on == false){
     limit_z_minus_on = true;
     SerialBT.println("LIMIT SWITCH TRIGGERED: Z-");
   }
