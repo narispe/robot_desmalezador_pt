@@ -28,15 +28,15 @@
 #define MINUS_X 0
 #define PLUS_Y 0
 #define MINUS_Y 1
-#define PLUS_Z 1
-#define MINUS_Z 0
+#define PLUS_Z 0
+#define MINUS_Z 1
 // STEPERS PITCH
 #define X_PITCH 0.1286  //°
 #define Y_PITCH 0.2826 //mm
 #define Z_PITCH 0.015 //mm
 // STEPERS VEL (T = RPM * 3e5)
-#define T_STEP_X 6000 //us
-#define T_STEP_Y 5000 //us
+#define T_STEP_X 6500 //us
+#define T_STEP_Y 5500 //us
 #define T_STEP_Z 900 //us
 #define T_DIR 10   //ms
 #define T_CAL_DELAY 500 // ms
@@ -130,8 +130,8 @@ void loop() {
 void step_pulse(int step_pin, int t_pulse){
   if ( is_limit_on(step_pin) ){
     SerialBT.print("bloq");
-  }
     return;
+  }
   digitalWrite(step_pin, HIGH);
   delayMicroseconds(t_pulse/2);
   digitalWrite(step_pin, LOW);
@@ -239,7 +239,7 @@ bool is_limit_on(int step_pin){
       break;
   }
   dir_val = digitalRead(dir_pin);
-  if ( (dir_val == dir_plus && limit_plus) || (dir_val == dir_minus && limit_minus) )
+  if ( ((dir_val == dir_plus) && limit_plus) || ((dir_val == dir_minus) && limit_minus) )
     return true;
   return false;
 }
@@ -343,12 +343,12 @@ void control_ps3(){
     change_dir(DIR_Y, MINUS_Y);
     step_pulse(STEP_Y, T_STEP_Y);
   }
-  if ( Ps3.data.button.l2 ){
-    change_dir(DIR_Z, MINUS_Z);
-    step_pulse(STEP_Z, T_STEP_Z);
-  }
   if ( Ps3.data.button.r2 ){
     change_dir(DIR_Z, PLUS_Z);
+    step_pulse(STEP_Z, T_STEP_Z);
+  }
+  if ( Ps3.data.button.l2 ){
+    change_dir(DIR_Z, MINUS_Z);
     step_pulse(STEP_Z, T_STEP_Z);
   }
 }
