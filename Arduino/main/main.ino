@@ -36,9 +36,9 @@
 #define Z_PITCH 0.015 //mm
 // STEPERS VEL (T = RPM * 3e5)
 #define T_STEP_X 6500 //us
-#define T_STEP_Y 5500 //us
+#define T_STEP_Y 7000 //us
 #define T_STEP_Z 900 //us
-#define T_DIR 10   //ms
+#define T_DIR 5   //ms
 #define T_CAL_DELAY 500 // ms
 // PUENTE H
 #define ENA 14
@@ -53,8 +53,8 @@
 #define NFactor 400.0f
 // PID
 #define TS 50  // ms
-#define KP 1.2f
-#define KI 1.4f
+#define KP 1.1f
+#define KI 1.3f
 #define KD 0.0f
 #define N_RPM_REFS 8
 
@@ -115,7 +115,11 @@ void loop() {
                   + (-KP-2000*KD/TS) * e_prev
                   + (1000*KD/TS) * e_prev_prev);
     pwm_val = constrain(pwm_val, -255, 255);
-    write_hbridge(pwm_val);
+    // write_hbridge(pwm_val);
+    if (rpm_ref != 0)
+      write_hbridge(255);
+    else 
+      write_hbridge(0);
     theta_prev = theta;
     e_prev = e;
     e_prev_prev = e_prev;
@@ -128,10 +132,10 @@ void loop() {
 //---------FUNCTIONS-----------
 // STEPPERS
 void step_pulse(int step_pin, int t_pulse){
-  if ( is_limit_on(step_pin) ){
-    SerialBT.print("bloq");
+  if ( is_limit_on(step_pin) )
     return;
-  }
+  if ( digitalRead(EN_CNC) == HIGH )
+    return;
   digitalWrite(step_pin, HIGH);
   delayMicroseconds(t_pulse/2);
   digitalWrite(step_pin, LOW);
@@ -139,15 +143,12 @@ void step_pulse(int step_pin, int t_pulse){
   switch ( step_pin ){
     case STEP_X:
       state[0] += (digitalRead(DIR_X) == PLUS_X) ? X_PITCH : -X_PITCH;
-      SerialBT.println("MOVING STEPPER X");
       break;
     case STEP_Y:
       state[1] += (digitalRead(DIR_Y) == PLUS_Y) ? Y_PITCH : -Y_PITCH;
-      SerialBT.println("MOVING STEPPER Y");
       break;
     case STEP_Z:
       state[2] += (digitalRead(DIR_Z) == PLUS_Z) ? Z_PITCH : -Z_PITCH;
-      SerialBT.println("MOVING STEPPER Z");
       break;
   }
 }
@@ -181,33 +182,41 @@ void change_dir(int dir_pin, bool dir_val){
 
 //  LIMIT SWITCH
 void check_limit_switch(){
-  limit_x_plus_on = false;
-  limit_x_minus_on = false;
-  limit_y_plus_on = false;
-  limit_y_minus_on = false;
-  limit_z_plus_on = false;
-  limit_z_minus_on = false;
-  if ( digitalRead(DIR_X) == PLUS_X && digitalRead(LS_X) == LOW && limit_x_minus_on == false){
+
+  if ( digitalRead(LS_X) == HIGH ){
+    limit_x_plus_on = false;
+    limit_x_minus_on = false;
+  }
+  if ( digitalRead(LS_Y) == HIGH ){
+    limit_y_plus_on = false;
+    limit_y_minus_on = false;
+  }
+  if ( digitalRead(LS_Z) == HIGH ){
+    limit_z_plus_on = false;
+    limit_z_minus_on = false;
+  }
+
+  if ( digitalRead(DIR_X) == PLUS_X && digitalRead(LS_X) == LOW && !limit_x_minus_on ){
     limit_x_plus_on = true;
     SerialBT.println("LIMIT SWITCH TRIGGERED: X+");
   }
-  if ( digitalRead(DIR_X) == MINUS_X && digitalRead(LS_X) == LOW && limit_x_plus_on == false){
+  if ( digitalRead(DIR_X) == MINUS_X && digitalRead(LS_X) == LOW && !limit_x_plus_on ){
     limit_x_minus_on = true;
     SerialBT.println("LIMIT SWITCH TRIGGERED: X-");
   }
-  if ( digitalRead(DIR_Y) == PLUS_Y && digitalRead(LS_Y) == LOW && limit_y_minus_on == false){
+  if ( digitalRead(DIR_Y) == PLUS_Y && digitalRead(LS_Y) == LOW && !limit_y_minus_on ){
     limit_y_plus_on = true;
     SerialBT.println("LIMIT SWITCH TRIGGERED: Y+");
   }
-  if ( digitalRead(DIR_Y) == MINUS_Y && digitalRead(LS_Y) == LOW && limit_y_plus_on == false){
+  if ( digitalRead(DIR_Y) == MINUS_Y && digitalRead(LS_Y) == LOW && !limit_y_plus_on ){
     limit_y_minus_on = true;
     SerialBT.println("LIMIT SWITCH TRIGGERED: Y-");
   }
-  if ( digitalRead(DIR_Z) == PLUS_Z && digitalRead(LS_Z) == LOW && limit_z_minus_on == false){
+  if ( digitalRead(DIR_Z) == PLUS_Z && digitalRead(LS_Z) == LOW && !limit_z_minus_on ){
     limit_z_plus_on = true;
     SerialBT.println("LIMIT SWITCH TRIGGERED: Z+");
   }
-  if ( digitalRead(DIR_Z) == MINUS_Z && digitalRead(LS_Z) == LOW && limit_z_plus_on == false){
+  if ( digitalRead(DIR_Z) == MINUS_Z && digitalRead(LS_Z) == LOW && !limit_z_plus_on ){
     limit_z_minus_on = true;
     SerialBT.println("LIMIT SWITCH TRIGGERED: Z-");
   }
@@ -328,11 +337,11 @@ void init_cnc_shield(){
 void control_ps3(){
   // Rotate while pressing
   if ( Ps3.data.button.left ){
-    change_dir(DIR_X, MINUS_X);
+    change_dir(DIR_X, PLUS_X);
     step_pulse(STEP_X, T_STEP_X);
   }
   if ( Ps3.data.button.right ){
-    change_dir(DIR_X, PLUS_X);
+    change_dir(DIR_X, MINUS_X);
     step_pulse(STEP_X, T_STEP_X);
   }
   if ( Ps3.data.button.up ){
@@ -353,6 +362,20 @@ void control_ps3(){
   }
 }
 void isr_ps3(){
+  if ( Ps3.event.button_down.left )
+    SerialBT.println("MOVING STEPPER X+");
+  if ( Ps3.event.button_down.right )
+    SerialBT.println("MOVING STEPPER X-");
+  if ( Ps3.event.button_down.up )
+    SerialBT.println("MOVING STEPPER Y+");
+  if ( Ps3.event.button_down.down )
+    SerialBT.println("MOVING STEPPER Y-");
+  if ( Ps3.event.button_down.r2 )
+    SerialBT.println("MOVING STEPPER Z+");
+  if ( Ps3.event.button_down.l2 )
+    SerialBT.println("MOVING STEPPER Z-");
+
+
   // pid control of rpm
   if ( Ps3.event.button_down.start )
     update_rpm_ref();
@@ -408,8 +431,6 @@ void write_hbridge(int PWM_val){
     digitalWrite(IN2, LOW);
   }
   ledcWrite(ENA, duty);
-  // SerialBT.print("H-BRIDGE PWM WRITED: ");
-  // SerialBT.println(PWM_val);
 }
 void update_rpm_ref(){
   rpm_val_index = (rpm_val_index + 1) % N_RPM_REFS;
